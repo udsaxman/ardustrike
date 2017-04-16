@@ -34,7 +34,7 @@ const int flywheelPin = 10;
 
 const int burstPin = 5;
 const int fullPin = 6;
-const int pusherSw = 4
+const int pusherSw = 4;
 
 int spinAverage = -10;
 int feedAverage = -10;
