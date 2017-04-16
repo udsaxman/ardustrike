@@ -34,6 +34,7 @@ const int flywheelPin = 10;
 
 const int burstPin = 5;
 const int fullPin = 6;
+const int pusherSw = 4
 
 int spinAverage = -10;
 int feedAverage = -10;
@@ -55,6 +56,7 @@ int burstReading;
 int fullReading;
 int spinReading;
 int feedReading;
+int pusherReading;
 
 //track if the flywheels are currently spinning.  Used to prevent pusher from being run when flywheels are stationary
 bool spinning = false;
@@ -75,6 +77,7 @@ void setup() {
   pinMode(feedSw, INPUT_PULLUP);
   pinMode(burstPin, INPUT_PULLUP);
   pinMode(fullPin, INPUT_PULLUP);
+  pinMode(pusherSw, INPUT_PULLUP);
 
   // set initial LED state
   digitalWrite(ledPin, ledState);
@@ -102,6 +105,8 @@ void loop() {
   
   burstReading = digitalRead(burstPin);
   fullReading = digitalRead(fullPin);
+  pusherReading = digitalRead(pusherSw);
+  
 
 
 //Firing Mode Handling
@@ -175,12 +180,14 @@ void loop() {
       pusherESC.write(feedESCMaxSpeed);
       feedchange=false; //reset feed change flag since the change has been processed
       pushing=true; //set flag that the pusher is running
+      //retract = false; //cancel any pending retract call since user has initiated another firing request
     } else {
       //stop the pusher
       pusherESC.write(feedESCMinSpeed);
       ledState = LOW;
       feedchange = false; //reset feed change flag since the change has been processed
       pushing=false;
+      //retract = true; //uncomment out when implementing retract function
     }
   }
  }
@@ -188,10 +195,19 @@ void loop() {
   pusherESC.write(feedESCMinSpeed);
   ledState = LOW;
   pushing=false;
+  //retract = true; //uncomment out when implementing retract function
  }
  
 //Retract code will go here.  Instead of there code for handling the feed trigger stopping the pusher, it will just set the retract variable which will then use this function to wait until the position switch to read low at which time it will stop the pusher motor
-
+/*
+if(retract){
+  if(pusherReading == LOW){
+    pusherESC.write(feedESCMinSpeed);
+    retract = false; //reset retract flag
+  }
+  
+}
+*/
 
 
   //set rage lighting colors
