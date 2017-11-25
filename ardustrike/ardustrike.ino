@@ -1,11 +1,9 @@
-#include <Adafruit_TiCoServo.h>
-#include <known_16bit_timers.h>
+#include <Servo.h>
 
 #include <Adafruit_NeoPixel.h>
 
 //This code utilizes TiCoServo to prevent interference between the Neopixels and the ESCs as documented here https://learn.adafruit.com/neopixels-and-servos/overview
 //NOTE: for triggers, HIGH means the trigger is NOT pressed and LOW means it is pressed.
-//TODO:  Write Select fire logic, Retraction logic
 
 
 
@@ -15,8 +13,8 @@
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
-Adafruit_TiCoServo pusherESC;
-Adafruit_TiCoServo spinESC;
+Servo pusherESC;
+Servo spinESC;
 
 
 //declare servo objects that will be used throughout the rest of the project.
@@ -29,12 +27,10 @@ const int revSw = 12;
 const int feedSw = 11;
 
 //define pins for ESCs
+//set these to the PWM pins on your controller
+//https://learn.adafruit.com/neopixels-and-servos/the-ticoservo-library
 const int pusherPin = 9;
 const int flywheelPin = 10;
-
-const int burstPin = 5;
-const int fullPin = 6;
-const int pusherSw = 4;
 
 int spinAverage = -10;
 int feedAverage = -10;
@@ -47,16 +43,12 @@ const int ESCMaxSpeed = 1860;   //this varies by ESC.  You may want to set it sl
 //variables to determine if we need to make changes to esc spinning states.  Eliminates unnecessary servo.writemicrosecond() calls
 bool spinchange = false;
 bool feedchange = false;
+bool ragechange = false;
 
 // Variables will change:
 int ledState = LOW;         // the current state of the output pin
 int spinButtonState;             // the current reading from the spin input pin
 int feedButtonState;            // the current reading from the feed input pin
-int burstReading;
-int fullReading;
-int spinReading;
-int feedReading;
-int pusherReading;
 
 //track if the flywheels are currently spinning.  Used to prevent pusher from being run when flywheels are stationary
 bool spinning = false;
@@ -75,9 +67,6 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(revSw, INPUT_PULLUP);
   pinMode(feedSw, INPUT_PULLUP);
-  pinMode(burstPin, INPUT_PULLUP);
-  pinMode(fullPin, INPUT_PULLUP);
-  pinMode(pusherSw, INPUT_PULLUP);
 
   // set initial LED state
   digitalWrite(ledPin, ledState);
@@ -99,20 +88,9 @@ void setup() {
 }
 
 void loop() {
-  // read the state of the switchs into local variables:
-  spinReading = digitalRead(revSw);
-  feedReading = digitalRead(feedSw);
-  
-  burstReading = digitalRead(burstPin);
-  fullReading = digitalRead(fullPin);
-  pusherReading = digitalRead(pusherSw);
-  
-
-
-//Firing Mode Handling
-//If both both burstReading and fullReading are HIGH, then mode is Semi Auto
-
-
+  // read the state of the switch into a local variable:
+  int spinReading = digitalRead(revSw);
+  int feedReading = digitalRead(feedSw);
 
 
 //Rev Trigger Handling
@@ -125,6 +103,7 @@ void loop() {
     }
     if (rage > 0) {
       rage--;
+      ragechange = true;
     }
    
   } else {
@@ -136,6 +115,7 @@ void loop() {
      if (rage < 25500) {
       rage++;
       rage++;
+      ragechange = true;
     }
   }
 
@@ -179,15 +159,13 @@ void loop() {
       ledState = HIGH;
       pusherESC.write(feedESCMaxSpeed);
       feedchange=false; //reset feed change flag since the change has been processed
-      pushing=true; //set flag that the pusher is running
-      //retract = false; //cancel any pending retract call since user has initiated another firing request
+      pushing=true;
     } else {
       //stop the pusher
       pusherESC.write(feedESCMinSpeed);
       ledState = LOW;
       feedchange = false; //reset feed change flag since the change has been processed
       pushing=false;
-      //retract = true; //uncomment out when implementing retract function
     }
   }
  }
@@ -195,22 +173,15 @@ void loop() {
   pusherESC.write(feedESCMinSpeed);
   ledState = LOW;
   pushing=false;
-  //retract = true; //uncomment out when implementing retract function
  }
  
-//Retract code will go here.  Instead of there code for handling the feed trigger stopping the pusher, it will just set the retract variable which will then use this function to wait until the position switch to read low at which time it will stop the pusher motor
-/*
-if(retract){
-  if(pusherReading == LOW){
-    pusherESC.write(feedESCMinSpeed);
-    retract = false; //reset retract flag
-  }
-  
-}
-*/
 
 
+  //Only update neopixel colors if they change
+  if (ragechange){
   //set rage lighting colors
+
+   
    rageColor = rage/100;
 
    redVal = rageColor;
@@ -220,12 +191,15 @@ if(retract){
 
    for (int i = 0; i < PIXEL_COUNT; i++) {
       strip.setPixelColor(i, strip.Color( redVal, greenVal, blueVal )); 
+      
     }
-    
+    strip.show(); // This sends the updated pixel color to the hardware.
+    ragechange = false;
+  }
   // set the LED state:
   digitalWrite(ledPin, ledState);
   //write the neopixels
-strip.show(); // This sends the updated pixel color to the hardware.
+
 
 }
 
